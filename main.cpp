@@ -13,7 +13,7 @@ using namespace std;
 
 /*-------------- Global Variables -------------- */
 double tsim0     = 0;			//< Simulation start time
-double tsim      = 90;			//< Simulation end time
+double tsim      = 20;			//< Simulation end time
 
 double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
@@ -58,10 +58,10 @@ PlatoonController<NCAR>	controller[NGROUP];
 // 	  0.0, 20.0, 40.0, 60.0, 80.0, 80.0, 60.0, 40.0, 40.0, 40.0,
 // 	 50, 60.0, 70.0, 80.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 30.0
 // };
-double vel_pattern[21] = {
-	  60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0,
-	  60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0
-};
+// double vel_pattern[21] = {
+// 	  60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0,
+// 	  60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0
+// };
 // double vel_pattern[21] = {
 // 	  15.0, 15.0, 25.0, 20.0, 30.0, 35.0, 30.0, 30.0, 20.0, 15.0,
 // 	 10.0, 10.0, 15.0, 20.0, 20.0, 10.0, 25.0, 30.0, 30.0, 20.0, 20.0
@@ -70,14 +70,14 @@ double vel_pattern[21] = {
 // 	 25.0, 25.0, 20.0, 30.0, 50.0, 70.0, 80.0, 80.0, 60.0, 30.0, 20.0,
 // 	 10.0, 10.0, 20.0, 50.0, 60.0, 65.0, 60.0, 40.0, 30.0, 30.0
 // };
-// double vel_pattern[21] = {
-// 	  60.0, 60.0, 70.0, 80.0, 80.0, 90.0, 110.0, 110.0, 100.0, 95.0,
-// 	 90.0, 80.0, 80.0, 60.0, 60.0, 70.0, 80.0, 70.0, 70.0, 60.0, 60.0
-// };
+double vel_pattern[21] = {
+	  60.0, 60.0, 70.0, 80.0, 80.0, 90.0, 110.0, 110.0, 100.0, 95.0,
+	 90.0, 80.0, 80.0, 60.0, 60.0, 70.0, 80.0, 70.0, 70.0, 60.0, 60.0
+};
 
 //Function for calculating velocity and acceleration of the leading vehicle
 void calc_vel(double t, double* vel, double* acc){
-	double h = 10.0;
+	double h = 1.0; //----10.0----
 	double k = 1000.0 / 3600.0; //< km/h -> m/s
 	int n = 21;
 	int idx = (int)floor(t/h);
@@ -172,41 +172,41 @@ int main(void){
 	char fn[200]="File";
 	char temp[50];
 
-	sprintf(temp, "_Auto3carsCacc");
-	strcat(fn, temp);
+	// sprintf(temp, "_Auto3carsCacc");
+	// strcat(fn, temp);
 	
-	sprintf(temp, "_tau%.2f",tau[0]);
-	strcat(fn, temp);
+	// sprintf(temp, "_tau%.2f",tau[0]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_K%.2f",K[0]);
-	strcat(fn, temp);
+	// sprintf(temp, "_K%.2f",K[0]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_THW%.1f", THW[ithw]);
-	strcat(fn, temp);
+	// sprintf(temp, "_THW%.1f", THW[ithw]);
+	// strcat(fn, temp);
 
-	sprintf(temp,"_Q%i%i%i",Q1[0],Q2[0],Q3[0]);
-	strcat(fn, temp);
+	// sprintf(temp,"_Q%i%i%i",Q1[0],Q2[0],Q3[0]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_R%i_",R[ir]);
-	strcat(fn, temp);
+	// sprintf(temp, "_R%i_",R[ir]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "%iSf", SF[isf]);
-	strcat(fn, temp);
+	// sprintf(temp, "%iSf", SF[isf]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_dconstEXPgain10");
-	strcat(fn, temp);
+	// sprintf(temp, "_dconstEXPgain10");
+	// strcat(fn, temp);
 
-	sprintf(temp, "_weight%i_dmin%.1f", platoon[0].sd[0], platoon[0].Dmin);
-	strcat(fn, temp);
+	// sprintf(temp, "_weight%i_dmin%.1f", platoon[0].sd[0], platoon[0].Dmin);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_uconstEXPgain10");
-	strcat(fn, temp);
+	// sprintf(temp, "_uconstEXPgain10");
+	// strcat(fn, temp);
 
-	sprintf(temp, "_weight%i_umax%.1f", platoon[0].su[0], platoon[0].umax[0]);
-	strcat(fn, temp);
+	// sprintf(temp, "_weight%i_umax%.1f", platoon[0].su[0], platoon[0].umax[0]);
+	// strcat(fn, temp);
 
-	sprintf(temp, "_zeta100_kmax10");
-	strcat(fn, temp);
+	// sprintf(temp, "_zeta100_kmax10");
+	// strcat(fn, temp);
 
 	sprintf(temp, ".csv");
 	strcat(fn, temp);
