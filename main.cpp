@@ -13,7 +13,7 @@ using namespace std;
 
 /*-------------- Global Variables -------------- */
 double tsim0     = 0;			//< Simulation start time
-double tsim      = 20;			//< Simulation end time
+double tsim      = 90;			//< Simulation end time
 
 double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
