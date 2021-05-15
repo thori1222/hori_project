@@ -13,11 +13,11 @@ using namespace std;
 
 /*-------------- Global Variables -------------- */
 double tsim0     = 0;			//< Simulation start time
-double tsim      = 15;			//< Simulation end time
+double tsim      = 3;			//< Simulation end time
 
 double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
-#define NCAR   3	   		//< #cars in a CACC group
+#define NCAR   1	   		//< #cars in a CACC group
 #define NGROUP 1			//< #groups
 
 #define NTHW   1			//< #THW
@@ -107,12 +107,16 @@ int pct_loop = 0;
 
 /*----------------------main loop------------------------*/
 int main(void){
-	for(int ic = 0; ic < NCAR; ic++){
+	for(int ic = 0; ic < NCAR; ic++){      //対象の一次遅れ系モデルのパラメータ
 		tau[ic] = 0.3;
 		K[ic] = 0.9;
 
 		alpha[ic] = 1/tau[ic];
 		beta[ic] = K[ic]/tau[ic];
+	}
+
+	for(int ig = 0; ig < NGROUP; ig++){      //ラグランジュ乗数の更新定数
+		platoon[ig].gamma = 1.0;
 	}
 	
 	for(int iq1 = 0; iq1 < NQ1; iq1++){

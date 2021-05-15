@@ -14,6 +14,9 @@ public:
 	
 	int		refmode;
 	double  cal_lim;
+
+	double  mu;          // Lagrange multiplier
+	double  gamma;       // Update constant
 	
 	double  a;		    // Acceleration of the leading car
 	double	v;			// Velocity of the leading car
@@ -38,6 +41,9 @@ public:
 	Platoon(){
 		refmode = 1;
 		cal_lim = pow(10.0, 50.0);
+
+		mu        = 0.0;
+		gamma     = 1.0;
 
 		a         = 0.0;
 		v		  = 0.0;
