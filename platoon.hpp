@@ -15,8 +15,8 @@ public:
 	int		refmode;
 	double  cal_lim;
 
-	double  mu;          // Lagrange multiplier
-	double  gamma;       // Update constant
+	bool    lagrange;    // true or false //
+	double  mu;          // Lagrange multiplier //
 	
 	double  a;		    // Acceleration of the leading car
 	double	v;			// Velocity of the leading car
@@ -42,8 +42,7 @@ public:
 		refmode = 1;
 		cal_lim = pow(10.0, 50.0);
 
-		mu        = 0.0;
-		gamma     = 1.0;
+		lagrange  = false; 
 
 		a         = 0.0;
 		v		  = 0.0;
@@ -81,6 +80,7 @@ public:
 	{
 		for(int i = 0; i < NCAR; i++){
 			phx1[3*i+0] = sf[3*i+0] * (x[3*i+0] - (Ds + thw[i]*x[3*i+1]));
+			if(lagrange) phx1[3*i+0] += mu;
 			phx1[3*i+1] = phx1[3*i+0] * (-thw[i]) + sf[3*i+1]*(x[3*i+1]-(i==0 ? v : (refmode==0?v:x[3*(i-1)+1]))) + (refmode==0?0:(i == NCAR-1 ? 0 : -sf[3*(i+1)+1]*(x[3*(i+1)+1]-x[3*i+1])));
 			phx1[3*i+2] = sf[3*i+2]*(x[3*i+2] - (i==0?0:(refmode==0?0:x[3*(i-1)+2]))) + refmode==0?0:(i==NCAR-1?0:-sf[3*(i+1)+1]*(x[3*(i+1)+2]-x[3*i+2]));
 		}
@@ -126,6 +126,7 @@ public:
 				}
 				lprime[3 * i + 0] += tmp;
 			}
+			if(lagrange) lprime[3 * i + 0] += (-mu);   //とりあえず1 car per 1 groupのみ//
 			lprime[3*i+1] = -(q[3*i+0]*(_x[3*i+0]-(Ds+thw[i]*_x[3*i+1]))*(-thw[i]) 
 							- q[3*i+1]*((i==0 ? v : (refmode==0?v:_x[3*(i-1)+1])) -_x[3*i+1])
 							+ (refmode==0?0:q[3*(i+1)+1]*(i==NCAR-1?0:_x[3*i+1] - _x[3*(i+1)+1])) 
@@ -165,7 +166,7 @@ public:
 };
 
 template<int NCAR>
-class PlatoonController : public Controller< Platoon<NCAR>, 200, 10>{
+class PlatoonController : public Controller< Platoon<NCAR>, 100, 10>{   //(ステップ数，GMRESの反復回数)
 public:
 	PlatoonController(){
 		this->tf     = 2.0;

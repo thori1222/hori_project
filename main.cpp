@@ -13,12 +13,13 @@ using namespace std;
 
 /*-------------- Global Variables -------------- */
 double tsim0     = 0;			//< Simulation start time
-double tsim      = 3;			//< Simulation end time
+double tsim      = 40;			//< Simulation end time
 
 double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
 #define NCAR   1	   		//< #cars in a CACC group
-#define NGROUP 1			//< #groups
+#define NGROUP 4			//< #groups
+#define STEP   100          //< ステップ数(platoon.hppの下のほうにあるステップ数に合わせる！)
 
 #define NTHW   1			//< #THW
 #define NR	   1 			//< #R
@@ -47,6 +48,15 @@ int Q1[NQ1] = {30};
 int Q2[NQ2] = {1};
 int Q3[NQ3] = {0};
 int SF[NSF] = {100};
+
+bool   Lagrange = false;   //ラグランジュ双対を行うかどうか//
+double Gamma    = 0.01;     //ラグランジュ双対の更新定数//
+double Rc       = 40.0;    //ラグランジュ双対の隊列長制約//
+double epsilon  = 10.0;     //ラグランジュ双対の更新判定//
+double x_line0[STEP] = {0};
+double x_line1[STEP] = {0};
+double x_line2[STEP] = {0};
+double x_line3[STEP] = {0};
 
 
 Platoon<NCAR>			platoon[NGROUP];
@@ -77,7 +87,7 @@ double vel_pattern[21] = {
 
 //Function for calculating velocity and acceleration of the leading vehicle
 void calc_vel(double t, double* vel, double* acc){
-	double h = 1.0; //----10.0----
+	double h = 10.0; //----10.0----
 	double k = 1000.0 / 3600.0; //< km/h -> m/s
 	int n = 21;
 	int idx = (int)floor(t/h);
@@ -115,9 +125,7 @@ int main(void){
 		beta[ic] = K[ic]/tau[ic];
 	}
 
-	for(int ig = 0; ig < NGROUP; ig++){      //ラグランジュ乗数の更新定数
-		platoon[ig].gamma = 1.0;
-	}
+	for(int ig = 0; ig < NGROUP; ig++) platoon[ig].lagrange = Lagrange;      
 	
 	for(int iq1 = 0; iq1 < NQ1; iq1++){
 	for(int iq2 = 0; iq2 < NQ2; iq2++){
@@ -273,9 +281,45 @@ int main(void){
 			platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
 		}
 
+		if (Lagrange){
+			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu = 0.0;
+		}
+		int i = 0;
+
 		// C/GMRESで制御入力を更新
-		for(int ig = 0; ig < NGROUP; ig++){
-			controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);
+		if(Lagrange){
+			while(1) {
+				double sum = 0.0;
+
+				for(int ig = 0; ig < NGROUP; ig++){
+					controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);
+				}
+
+				controller[0].returnx(x_line0);
+				controller[1].returnx(x_line1);
+				controller[2].returnx(x_line2);
+				controller[3].returnx(x_line3);
+
+				for (int k = 0; k < STEP; k++) sum += x_line0[k];
+				for (int k = 0; k < STEP; k++) sum += x_line1[k];
+				for (int k = 0; k < STEP; k++) sum += x_line2[k];
+				for (int k = 0; k < STEP; k++) sum += x_line3[k];
+
+				// if ((sum - (Rc * STEP) < epsilon) && (sum - (Rc * STEP) > -epsilon)) break;
+				if (sum - (Rc * STEP) < epsilon) break;
+				std::cout << "dL/dμ = " << sum - (Rc * STEP) 
+					<< "     , i = " << i
+					<< "     , t = " << t << std::endl;
+				for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu += Gamma * (sum - (Rc * STEP)); 
+				i++;
+
+				if (i > 100) break;
+			}
+		}
+		else{
+			for(int ig = 0; ig < NGROUP; ig++){
+				controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);
+			}
 		}
 		
 		// 状態の更新

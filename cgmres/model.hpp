@@ -164,6 +164,12 @@ public:
 		duvec.clear();
 	}
 
+	//車間距離の時間系列を返す
+	void returnx(double X_line[])
+	{
+		for (int k = 0; k < dv; k++) X_line[k] = xtau.elem(k)[0];
+	}
+
 
 	/*-------------- Control Update -------------- */
 
