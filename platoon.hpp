@@ -5,6 +5,7 @@
 #include <float.h>
 #include "model.hpp"
 
+#define STEP 200
 
 template<int NCAR>
 class Platoon : public Model<3*NCAR, 1*NCAR>{
@@ -16,7 +17,7 @@ public:
 	double  cal_lim;
 
 	bool    lagrange;    // true or false //
-	double  mu;          // Lagrange multiplier //
+	double  mu[STEP];    // Lagrange multiplier //
 	
 	double  a;		    // Acceleration of the leading car
 	double	v;			// Velocity of the leading car
@@ -43,6 +44,7 @@ public:
 		cal_lim = pow(10.0, 50.0);
 
 		lagrange  = false; 
+		for (int i = 0; i < 200; i++) mu[i] = 0;
 
 		a         = 0.0;
 		v		  = 0.0;
@@ -80,7 +82,6 @@ public:
 	{
 		for(int i = 0; i < NCAR; i++){
 			phx1[3*i+0] = sf[3*i+0] * (x[3*i+0] - (Ds + thw[i]*x[3*i+1]));
-			if(lagrange) phx1[3*i+0] += mu;
 			phx1[3*i+1] = phx1[3*i+0] * (-thw[i]) + sf[3*i+1]*(x[3*i+1]-(i==0 ? v : (refmode==0?v:x[3*(i-1)+1]))) + (refmode==0?0:(i == NCAR-1 ? 0 : -sf[3*(i+1)+1]*(x[3*(i+1)+1]-x[3*i+1])));
 			phx1[3*i+2] = sf[3*i+2]*(x[3*i+2] - (i==0?0:(refmode==0?0:x[3*(i-1)+2]))) + refmode==0?0:(i==NCAR-1?0:-sf[3*(i+1)+1]*(x[3*(i+1)+2]-x[3*i+2]));
 		}
@@ -97,7 +98,7 @@ public:
 	}
 
 	/*-------------- Costate Equation -------------- */
-	void lpfunc(double t, const typename model_t::x_t& lmd, const typename model_t::xu_t& linp, typename model_t::x_t& lprime)
+	void lpfunc(double t, const typename model_t::x_t& lmd, const typename model_t::xu_t& linp, typename model_t::x_t& lprime, int i)
 	{
 		typename model_t::x_t    _x;
 		typename model_t::u_t    _u;
@@ -126,7 +127,7 @@ public:
 				}
 				lprime[3 * i + 0] += tmp;
 			}
-			if(lagrange) lprime[3 * i + 0] += (-mu);   //とりあえず1 car per 1 groupのみ//
+			if(lagrange) lprime[3 * i + 0] += (-mu[i]);   //とりあえず1 car per 1 groupのみ//
 			lprime[3*i+1] = -(q[3*i+0]*(_x[3*i+0]-(Ds+thw[i]*_x[3*i+1]))*(-thw[i]) 
 							- q[3*i+1]*((i==0 ? v : (refmode==0?v:_x[3*(i-1)+1])) -_x[3*i+1])
 							+ (refmode==0?0:q[3*(i+1)+1]*(i==NCAR-1?0:_x[3*i+1] - _x[3*(i+1)+1])) 
@@ -166,7 +167,7 @@ public:
 };
 
 template<int NCAR>
-class PlatoonController : public Controller< Platoon<NCAR>, 100, 10>{   //(ステップ数，GMRESの反復回数)
+class PlatoonController : public Controller< Platoon<NCAR>, STEP, 10>{   //(ステップ数，GMRESの反復回数) 3くらいかも
 public:
 	PlatoonController(){
 		this->tf     = 2.0;

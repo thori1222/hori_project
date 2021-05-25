@@ -19,7 +19,7 @@ double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
 #define NCAR   1	   		//< #cars in a CACC group
 #define NGROUP 4			//< #groups
-#define STEP   100          //< ステップ数(platoon.hppの下のほうにあるステップ数に合わせる！)
+#define STEP   200          //< ステップ数(platoon.hppの下のほうにあるステップ数に合わせる！)
 
 #define NTHW   1			//< #THW
 #define NR	   1 			//< #R
@@ -49,14 +49,11 @@ int Q2[NQ2] = {1};
 int Q3[NQ3] = {0};
 int SF[NSF] = {100};
 
-bool   Lagrange = false;   //ラグランジュ双対を行うかどうか//
-double Gamma    = 0.01;     //ラグランジュ双対の更新定数//
+bool   Lagrange = true;   //ラグランジュ双対を行うかどうか//
+double Gamma    = 1.0;     //ラグランジュ双対の更新定数//
 double Rc       = 40.0;    //ラグランジュ双対の隊列長制約//
-double epsilon  = 10.0;     //ラグランジュ双対の更新判定//
-double x_line0[STEP] = {0};
-double x_line1[STEP] = {0};
-double x_line2[STEP] = {0};
-double x_line3[STEP] = {0};
+double epsilon  = 1.0;     //ラグランジュ双対の更新判定//
+double x_line[NGROUP][STEP] = {0};
 
 
 Platoon<NCAR>			platoon[NGROUP];
@@ -87,7 +84,7 @@ double vel_pattern[21] = {
 
 //Function for calculating velocity and acceleration of the leading vehicle
 void calc_vel(double t, double* vel, double* acc){
-	double h = 10.0; //----10.0----
+	double h = 1.0; //----10.0----
 	double k = 1000.0 / 3600.0; //< km/h -> m/s
 	int n = 21;
 	int idx = (int)floor(t/h);
@@ -282,40 +279,56 @@ int main(void){
 		}
 
 		if (Lagrange){
-			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu = 0.0;
+			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu[STEP] = {0.0};
 		}
 		int i = 0;
 
 		// C/GMRESで制御入力を更新
+		// 双対問題
 		if(Lagrange){
 			while(1) {
-				double sum = 0.0;
+				double sum[STEP] = {0.0};
 
+				//　入力を更新
 				for(int ig = 0; ig < NGROUP; ig++){
 					controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);
 				}
 
-				controller[0].returnx(x_line0);
-				controller[1].returnx(x_line1);
-				controller[2].returnx(x_line2);
-				controller[3].returnx(x_line3);
+				// xの系列を取得
+				for(int g = 0; g < NGROUP; g++) controller[g].returnx(g, x_line);
+				// xの時系列ごとの和を出す
+				for(int k = 0; k < STEP; k++){
+					for(int g = 0; g < NGROUP; g++) sum[k] += x_line[g][k];
+				}
 
-				for (int k = 0; k < STEP; k++) sum += x_line0[k];
-				for (int k = 0; k < STEP; k++) sum += x_line1[k];
-				for (int k = 0; k < STEP; k++) sum += x_line2[k];
-				for (int k = 0; k < STEP; k++) sum += x_line3[k];
+				// 確認用出力
+				// for(int k = 0; k < STEP; k++)
+				// 	std::cout << "sum[" << k << "] = " << sum[k] << std::endl;
+				
+				// μの更新
+				int j = 0;
+				for(int ig = 0; ig < NGROUP; ig++){
+					for(int k = 0; k < STEP; k++) {
+						if (sum[k] - Rc > epsilon) {
+							platoon[ig].mu[k] += Gamma * (sum[k] - Rc);
+							j++;
+						}
+					}
+				}
+				if (j == 0) break;      //更新判定
 
-				// if ((sum - (Rc * STEP) < epsilon) && (sum - (Rc * STEP) > -epsilon)) break;
-				if (sum - (Rc * STEP) < epsilon) break;
-				std::cout << "dL/dμ = " << sum - (Rc * STEP) 
-					<< "     , i = " << i
-					<< "     , t = " << t << std::endl;
-				for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu += Gamma * (sum - (Rc * STEP)); 
 				i++;
+				if (i > 100) break;     //最大反復回数
 
-				if (i > 100) break;
+				//確認用
+				// std::cout << "i = " << i << std::endl;
+				// double Sum = 0.0;
+				// for(int k = 0; k < STEP; k++) //Sum += sum[k] - Rc;
+				// std::cout << "mu[" << k << "] = " << platoon[0].mu[k] << std::endl;
+
 			}
 		}
+		// 双対でない場合
 		else{
 			for(int ig = 0; ig < NGROUP; ig++){
 				controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);

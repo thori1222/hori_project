@@ -61,7 +61,7 @@ public:
 	virtual void xpfunc(double t, const x_t& x, const u_t& u, x_t& xprime) = 0;
 
 	/*-------------- Costate Equation -------------- */
-	virtual void lpfunc(double t, const x_t& lmd, const xu_t& linp, x_t& lprime) = 0; 
+	virtual void lpfunc(double t, const x_t& lmd, const xu_t& linp, x_t& lprime, int i) = 0; 
 
 	/*-------------- Error in Optimality Condition, Hu -------------- */
 	virtual void hufunc(double t, const x_t& x, const x_t& lmd, const u_t& u, u_t& hui) = 0;
@@ -165,9 +165,13 @@ public:
 	}
 
 	//車間距離の時間系列を返す
-	void returnx(double X_line[])
+	// void returnx(double X_line[])
+	// {
+	// 	for (int k = 0; k < dv; k++) X_line[k] = xtau.elem(k)[0];
+	// }
+	void returnx(int g, double X_line[][dv])
 	{
-		for (int k = 0; k < dv; k++) X_line[k] = xtau.elem(k)[0];
+		for (int k = 0; k < dv; k++) X_line[g][k] = xtau.elem(k)[0];
 	}
 
 
@@ -204,7 +208,7 @@ public:
 		for(i = dv-1; i >= 0; i--){
 			linp.x() = xtau.elem(i);
 			linp.u() = u.elem(i);
-			model->lpfunc(taut, ltau.elem(i+1), linp, ld);
+			model->lpfunc(taut, ltau.elem(i+1), linp, ld, i);
 			ltau.elem(i) = ltau.elem(i+1) - htau * ld;
 			taut -= htau; 
 			// 得られたxとlambdaよりHuを計算（論文(5)式）
