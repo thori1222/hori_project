@@ -19,7 +19,7 @@ double J_1,J_2,J_3,J_4, J = 0;				//<Cost functions
 
 #define NCAR   1	   		//< #cars in a CACC group
 #define NGROUP 4			//< #groups
-#define STEP   200          //< ステップ数(platoon.hppの下のほうにあるステップ数に合わせる！)
+#define STEP   200          //< ステップ数(platoon.hppに合わせる！)
 
 #define NTHW   1			//< #THW
 #define NR	   1 			//< #R
@@ -49,12 +49,10 @@ int Q2[NQ2] = {1};
 int Q3[NQ3] = {0};
 int SF[NSF] = {100};
 
-bool   Lagrange = true;   //ラグランジュ双対を行うかどうか//
-double Gamma    = 1.0;     //ラグランジュ双対の更新定数//
+bool   Lagrange = false;   //ラグランジュ双対を行うかどうか//
+double GAMMA    = 10.0;     //ラグランジュ双対のステップ幅//
 double Rc       = 40.0;    //ラグランジュ双対の隊列長制約//
 double epsilon  = 1.0;     //ラグランジュ双対の更新判定//
-double x_line[NGROUP][STEP] = {0};
-
 
 Platoon<NCAR>			platoon[NGROUP];
 PlatoonController<NCAR>	controller[NGROUP];
@@ -84,7 +82,7 @@ double vel_pattern[21] = {
 
 //Function for calculating velocity and acceleration of the leading vehicle
 void calc_vel(double t, double* vel, double* acc){
-	double h = 1.0; //----10.0----
+	double h = 10.0; //----10.0----
 	double k = 1000.0 / 3600.0; //< km/h -> m/s
 	int n = 21;
 	int idx = (int)floor(t/h);
@@ -122,6 +120,13 @@ int main(void){
 		beta[ic] = K[ic]/tau[ic];
 	}
 
+	//ラグランジュ乗数の初期化
+	if (Lagrange){
+		for(int k = 0; k < STEP; k++) {
+			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu[k] = 0.0;
+		}
+	}
+
 	for(int ig = 0; ig < NGROUP; ig++) platoon[ig].lagrange = Lagrange;      
 	
 	for(int iq1 = 0; iq1 < NQ1; iq1++){
@@ -141,7 +146,7 @@ int main(void){
 	int	   isim;
 	double t;
 
-	clock_t start, end;
+	clock_t start, end, calc_start;
 
 	for(int ig = 0; ig < NGROUP; ig++)for(int ic = 0; ic < NCAR; ic++){
 		platoon[ig].q[3*ic+0] = Q1[iq1];
@@ -274,18 +279,28 @@ int main(void){
 		
 		// MPCモデルの前方車加速度を設定
 		for(int ig = 0; ig < NGROUP; ig++){
-			platoon[ig].a = 0; 
+			//等速モデル
+			//platoon[ig].a = 0; 
+			//platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
+
+			//等加速度モデル
+			platoon[ig].a = (ig == 0 ? al : platoon[ig-1].x[3*(NCAR-1)+2]);
 			platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
 		}
 
+		// ラグランジュパラメータ初期化（毎回μ=0スタート）
 		if (Lagrange){
-			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu[STEP] = {0.0};
+			for(int k = 0; k < STEP; k++) {
+				for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu[k] = 0.0;
+			}
 		}
 		int i = 0;
+		double Gamma = GAMMA;
 
 		// C/GMRESで制御入力を更新
 		// 双対問題
 		if(Lagrange){
+			calc_start = clock();
 			while(1) {
 				double sum[STEP] = {0.0};
 
@@ -294,16 +309,10 @@ int main(void){
 					controller[ig].unew(t, platoon[ig].x, platoon[ig].x1, platoon[ig].u);
 				}
 
-				// xの系列を取得
-				for(int g = 0; g < NGROUP; g++) controller[g].returnx(g, x_line);
 				// xの時系列ごとの和を出す
-				for(int k = 0; k < STEP; k++){
-					for(int g = 0; g < NGROUP; g++) sum[k] += x_line[g][k];
+				for(int k = 0; k < STEP; k++) {
+					for(int ig = 0; ig < NGROUP; ig++) sum[k] += controller[ig].xtau.elem(k)[0];
 				}
-
-				// 確認用出力
-				// for(int k = 0; k < STEP; k++)
-				// 	std::cout << "sum[" << k << "] = " << sum[k] << std::endl;
 				
 				// μの更新
 				int j = 0;
@@ -317,14 +326,22 @@ int main(void){
 				}
 				if (j == 0) break;      //更新判定
 
+				// 反復制限
 				i++;
-				if (i > 100) break;     //最大反復回数
+				// if (i >= 100) break;     //最大反復回数
+				if ((double)(clock() - calc_start)/CLOCKS_PER_SEC >= 0.01 * NGROUP) break;   //最大反復時間(s)
+
+				// γの更新
+				Gamma = GAMMA * 1 / sqrt(i);
 
 				//確認用
-				// std::cout << "i = " << i << std::endl;
+				// std::cout << "i = " << i << " , γ = " << Gamma << std::endl;
 				// double Sum = 0.0;
-				// for(int k = 0; k < STEP; k++) //Sum += sum[k] - Rc;
+				// for(int k = 0; k < STEP; k++) 
+				// Sum += sum[k] - Rc;
 				// std::cout << "mu[" << k << "] = " << platoon[0].mu[k] << std::endl;
+				// std::cout << "残差[" << k << "] = " << sum[k] - Rc << std::endl;
+				// std::cout << "Sum = " << Sum << std::endl;
 
 			}
 		}
@@ -381,6 +398,10 @@ int main(void){
 		// 		" , " << controller[ig].ptau.elem(ih)[ic];
 		// }
 	    fs<<endl;
+
+		// 確認用
+		// std::cout << "-------------------------------------------" << std::endl;
+		// cout << "t = " << t << " ,i = " << i << endl;
 
 		//時間の確認
 		if(fmod(isim,100) == 0)
