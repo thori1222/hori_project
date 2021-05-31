@@ -149,7 +149,7 @@ public:
 		model->x = model->x0;
 	
 		// phi_x(x, t)
-		model->phix(tsim0, model->x0, lmd0, i);
+		model->phix(tsim0, model->x0, lmd0, 0);
 
 		// Hu( 
 		model->hufunc(tsim0, model->x0, lmd0, model->u0, hu0);
