@@ -91,7 +91,7 @@ public:
 	void xpfunc(double t, const typename model_t::x_t& x, const typename model_t::u_t& u, typename model_t::x_t& xprime, int j)
 	{
 		for(int i = 0; i < NCAR; i++){
-			xprime[3*i+0] = (i==0 ? v + a*j*HT : x[3*(i-1)+1]) - x[3*i+1] + 0.5*0.01*(i==0?a:x[3*(i-1)+2]-x[3*i+2]);
+			xprime[3*i+0] = (i==0 ? v + a*j*HT : x[3*(i-1)+1]) - x[3*i+1]; // + 0.5*0.01*(i==0?a:x[3*(i-1)+2]-x[3*i+2]); 
 			xprime[3*i+1] = x[3*i+2];
 			xprime[3*i+2] = beta[i]*u[i] - alpha[i]*x[3*i+2];
 		}
@@ -133,7 +133,8 @@ public:
 							+ (refmode==0?0:q[3*(i+1)+1]*(i==NCAR-1?0:_x[3*i+1] - _x[3*(i+1)+1])) 
 							- lmd[3*i+0] + (i==NCAR-1?0:lmd[3*(i+1)+0]));
 			lprime[3*i+2] = -(q[3*i+2]*(_x[3*i+2]-(i==0?a:refmode==0?0:_x[3*(i-1)+2])) + (refmode==0?0:q[3*(i+1)+2]*(i==NCAR-1?0:_x[3*i+2]-_x[3*(i+1)+2]))                     
-							- lmd[3*i+0]*0.5*0.01 + (i==NCAR-1?0:lmd[3*(i+1)+0]*0.5*0.01) + lmd[3*i+1] - lmd[3*i+2]*alpha[i]);
+							// - lmd[3*i+0]*0.5*0.01 + (i==NCAR-1?0:lmd[3*(i+1)+0]*0.5*0.01) 
+							+ lmd[3*i+1] - lmd[3*i+2]*alpha[i]);
 		}
 	}
 

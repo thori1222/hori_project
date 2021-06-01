@@ -328,7 +328,7 @@ int main(void){
 
 				// 反復制限
 				i++;
-				// if (i >= 100) break;     //最大反復回数
+				// if (i >= 100) break;                                                      //最大反復回数
 				if ((double)(clock() - calc_start)/CLOCKS_PER_SEC >= 0.01 * NGROUP) break;   //最大反復時間(s)
 
 				// γの更新
@@ -399,9 +399,16 @@ int main(void){
 		// }
 	    fs<<endl;
 
-		// 確認用
+		// 確認用 car1におけるcar0の速度予測の系列
 		// std::cout << "-------------------------------------------" << std::endl;
-		// cout << "t = " << t << " ,i = " << i << endl;
+		// cout << "-------------------------t = " << t << "-------------------------------" << endl;
+		// double v1 = df[0][0];
+		// double v2 = df[0][0];
+		// for (int ih = 0; ih < controller[0].dv; ih++) {
+		// 	v2 += controller[0].xtau.elem(ih)[1]*0.01;
+		// 	cout << "ih : " << ih << "     =     " << ((controller[0].xtau.elem(ih+1)[0] + v2) - (controller[0].xtau.elem(ih)[0] + v1))/0.01 << endl;
+		// 	v1 = v2;
+		// }
 
 		//時間の確認
 		if(fmod(isim,100) == 0)
