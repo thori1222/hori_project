@@ -280,12 +280,12 @@ int main(void){
 		// MPCモデルの前方車加速度を設定
 		for(int ig = 0; ig < NGROUP; ig++){
 			//等速モデル
-			//platoon[ig].a = 0; 
-			//platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
+			platoon[ig].a = 0; 
+			platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
 
 			//等加速度モデル
-			platoon[ig].a = (ig == 0 ? al : platoon[ig-1].x[3*(NCAR-1)+2]);
-			platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
+			// platoon[ig].a = (ig == 0 ? al : platoon[ig-1].x[3*(NCAR-1)+2]);
+			// platoon[ig].v = (ig == 0 ? vl : platoon[ig-1].x[3*(NCAR-1)+1]);
 		}
 
 		// ラグランジュパラメータ初期化（毎回μ=0スタート）
