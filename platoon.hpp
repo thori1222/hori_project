@@ -171,7 +171,7 @@ class PlatoonController : public Controller< Platoon<NCAR>, STEP, 10>{   //(ในใ
 public:
 	PlatoonController(){
 		this->tf     = 2.0;
-		this->ht     = HT;
+		this->ht     = 0.01;
 		this->alpha  = 1.5;
 		this->zeta   = 50;
 		this->hdir   = 1.e-8;//0.002;
