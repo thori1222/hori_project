@@ -120,13 +120,6 @@ int main(void){
 		beta[ic] = K[ic]/tau[ic];
 	}
 
-	//ラグランジュ乗数の初期化
-	if (Lagrange){
-		for(int k = 0; k < STEP; k++) {
-			for(int ig = 0; ig < NGROUP; ig++) platoon[ig].mu[k] = 0.0;
-		}
-	}
-
 	for(int ig = 0; ig < NGROUP; ig++) platoon[ig].lagrange = Lagrange;      
 	
 	for(int iq1 = 0; iq1 < NQ1; iq1++){

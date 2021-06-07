@@ -44,6 +44,7 @@ public:
 		cal_lim = pow(10.0, 50.0);
 
 		lagrange  = false; 
+		for(int i = 0; i < STEP; i++) mu[i] = 0.0;
 
 		a         = 0.0;
 		v		  = 0.0;
