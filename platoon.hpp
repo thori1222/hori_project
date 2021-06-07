@@ -5,8 +5,6 @@
 #include <float.h>
 #include "model.hpp"
 
-#define STEP 200
-#define HT   0.01
 
 template<int NCAR>
 class Platoon : public Model<3*NCAR, 1*NCAR>{
@@ -16,9 +14,6 @@ public:
 	
 	int		refmode;
 	double  cal_lim;
-
-	bool    lagrange;    // true or false //
-	double  mu[STEP];    // Lagrange multiplier //
 	
 	double  a;		    // Acceleration of the leading car
 	double	v;			// Velocity of the leading car
@@ -26,6 +21,7 @@ public:
 	double	Ds;			// Standstill reference gap
 	double  thw[NCAR];	// Time headway	
 	double  Dmin;			// Minimum gap as safety constraint
+	double  R;              // Maximum platoon distance
 
 	double  alpha[NCAR]; //(G(s) = beta/(s+alpha), a(t+1) = (1/dt - alpha)*a(t) + beta*dt*u(t))
 	double  beta[NCAR]; //(a(t+1) = (1/dt - 1/tau)*a(t) + dt*K/tau*u(t), a_dot(t) = -1/tau*a(t) + K/tau*u(t) ,tau = 1/alpha, K = beta/alpha)
@@ -38,19 +34,21 @@ public:
 	int		r     [NCAR];	// Weight on the control input
 	int		su	  [NCAR];   // Weight on the input constraint
 	int		sd	  [NCAR];	// Weight on the distnace constraint
+	int     sd_all;          // Weight on the platoon distance constraint
 
 	
 	Platoon(){
 		refmode = 1;
 		cal_lim = pow(10.0, 50.0);
 
-		lagrange  = false; 
-
 		a         = 0.0;
 		v		  = 0.0;
 
 		Ds        = 10.0;
 		Dmin	  = 5.0;
+
+		R         = 40.5;    //////
+		sd_all    = 100;     //////
 		
 		for(int i = 0; i < NCAR; i++){
 			sf[3 * i + 0] = 1000;
@@ -78,45 +76,50 @@ public:
 	}
 
 	/*-------------- dPhi/dx -------------- */
-	void phix(double t, const typename model_t::x_t& x, typename model_t::x_t& phx1, int j)
+	void phix(double t, const typename model_t::x_t& x, typename model_t::x_t& phx1)
 	{
 		for(int i = 0; i < NCAR; i++){
 			phx1[3*i+0] = sf[3*i+0] * (x[3*i+0] - (Ds + thw[i]*x[3*i+1]));
-			phx1[3*i+1] = phx1[3*i+0] * (-thw[i]) + sf[3*i+1]*(x[3*i+1]-(i==0 ? v + a*j*HT : (refmode==0?v + a*j*HT:x[3*(i-1)+1]))) + (refmode==0?0:(i == NCAR-1 ? 0 : -sf[3*(i+1)+1]*(x[3*(i+1)+1]-x[3*i+1])));
-			phx1[3*i+2] = sf[3*i+2]*(x[3*i+2] - (i==0?a:(refmode==0?0:x[3*(i-1)+2]))) + refmode==0?0:(i==NCAR-1?0:-sf[3*(i+1)+1]*(x[3*(i+1)+2]-x[3*i+2]));
+			phx1[3*i+1] = phx1[3*i+0] * (-thw[i]) + sf[3*i+1]*(x[3*i+1]-(i==0 ? v : (refmode==0?v:x[3*(i-1)+1]))) + (refmode==0?0:(i == NCAR-1 ? 0 : -sf[3*(i+1)+1]*(x[3*(i+1)+1]-x[3*i+1])));
+			phx1[3*i+2] = sf[3*i+2]*(x[3*i+2] - (i==0?0:(refmode==0?0:x[3*(i-1)+2]))) + refmode==0?0:(i==NCAR-1?0:-sf[3*(i+1)+1]*(x[3*(i+1)+2]-x[3*i+2]));
 		}
 	}
 
 	/*-------------- State Equation -------------- */
-	void xpfunc(double t, const typename model_t::x_t& x, const typename model_t::u_t& u, typename model_t::x_t& xprime, int j)
+	void xpfunc(double t, const typename model_t::x_t& x, const typename model_t::u_t& u, typename model_t::x_t& xprime)
 	{
 		for(int i = 0; i < NCAR; i++){
-			xprime[3*i+0] = (i==0 ? v + a*j*HT : x[3*(i-1)+1]) - x[3*i+1]; // + 0.5*0.01*(i==0?a:x[3*(i-1)+2]-x[3*i+2]); 
+			xprime[3*i+0] = (i==0 ? v : x[3*(i-1)+1]) - x[3*i+1] + 0.5*0.01*(i==0?a:x[3*(i-1)+2]-x[3*i+2]);
 			xprime[3*i+1] = x[3*i+2];
 			xprime[3*i+2] = beta[i]*u[i] - alpha[i]*x[3*i+2];
 		}
 	}
 
 	/*-------------- Costate Equation -------------- */
-	void lpfunc(double t, const typename model_t::x_t& lmd, const typename model_t::xu_t& linp, typename model_t::x_t& lprime, int j)
+	void lpfunc(double t, const typename model_t::x_t& lmd, const typename model_t::xu_t& linp, typename model_t::x_t& lprime)
 	{
 		typename model_t::x_t    _x;
 		typename model_t::u_t    _u;
 		double tmp;
+		double dsum;
  
 		_x = linp.x();
 		_u = linp.u();
+
+		dsum = 0.0;
+		for(int i = 0; i < NCAR; i++) dsum += _x[3*i+0];
 		
 		// H_xにマイナスかけたもの
 		for(int i = 0; i < NCAR; i++){
 			// auto
 			lprime[3*i+0] = -(q[3*i+0]*(_x[3*i+0]-(Ds+thw[i]*_x[3*i+1])));
 			double tmp = 0;
-			int gain = 10;
+			int gain1 = 10;
+			int gain2 = 10;    ////////
 			if (_x[3 * i + 0] < Dmin + 2.0) {
 					try {
-					tmp = -(sd[i] * -gain * exp(-gain * (_x[3 * i + 0] - Dmin))); //Exponential function
-					//tmp = -(sd[i] * (_x[3*i+0]<Dmin?-gain:0)); //Piece-wise linear function
+					tmp = -(sd[i] * -gain1 * exp(-gain1 * (_x[3 * i + 0] - Dmin))); //Exponential function
+					//tmp = -(sd[i] * (_x[3*i+0]<Dmin?-gain1:0)); //Piece-wise linear function
 					//tmp = -(sd[i] * (_x[3*i+0]<Dmin?4*(_x[3*i+0]-Dmin)*(_x[3*i+0]-Dmin)*(_x[3*i+0]-Dmin):0));
 
 					if (tmp > cal_lim || tmp < -cal_lim)
@@ -127,14 +130,13 @@ public:
 				}
 				lprime[3 * i + 0] += tmp;
 			}
-			if(lagrange) lprime[3 * i + 0] += (-mu[j]);   //とりあえず1 car per 1 groupのみ//
+			lprime[3 * i + 0] += -(sd_all * gain2 * exp(gain2 * (dsum - R)));
 			lprime[3*i+1] = -(q[3*i+0]*(_x[3*i+0]-(Ds+thw[i]*_x[3*i+1]))*(-thw[i]) 
-							- q[3*i+1]*((i==0 ? v + a*j*HT : (refmode==0?v + a*j*HT:_x[3*(i-1)+1])) -_x[3*i+1])
+							- q[3*i+1]*((i==0 ? v : (refmode==0?v:_x[3*(i-1)+1])) -_x[3*i+1])
 							+ (refmode==0?0:q[3*(i+1)+1]*(i==NCAR-1?0:_x[3*i+1] - _x[3*(i+1)+1])) 
 							- lmd[3*i+0] + (i==NCAR-1?0:lmd[3*(i+1)+0]));
-			lprime[3*i+2] = -(q[3*i+2]*(_x[3*i+2]-(i==0?a:refmode==0?0:_x[3*(i-1)+2])) + (refmode==0?0:q[3*(i+1)+2]*(i==NCAR-1?0:_x[3*i+2]-_x[3*(i+1)+2]))                     
-							// - lmd[3*i+0]*0.5*0.01 + (i==NCAR-1?0:lmd[3*(i+1)+0]*0.5*0.01) 
-							+ lmd[3*i+1] - lmd[3*i+2]*alpha[i]);
+			lprime[3*i+2] = -(q[3*i+2]*(_x[3*i+2]-(i==0?0:refmode==0?0:_x[3*(i-1)+2])) + (refmode==0?0:q[3*(i+1)+2]*(i==NCAR-1?0:_x[3*i+2]-_x[3*(i+1)+2]))                     
+							- lmd[3*i+0]*0.5*0.01 + (i==NCAR-1?0:lmd[3*(i+1)+0]*0.5*0.01) + lmd[3*i+1] - lmd[3*i+2]*alpha[i]);
 		}
 	}
 
@@ -168,11 +170,11 @@ public:
 };
 
 template<int NCAR>
-class PlatoonController : public Controller< Platoon<NCAR>, STEP, 10>{   //(ステップ数，GMRESの反復回数) 3くらいかも
+class PlatoonController : public Controller< Platoon<NCAR>, 200, 10>{
 public:
 	PlatoonController(){
 		this->tf     = 2.0;
-		this->ht     = HT;
+		this->ht     = 0.01;
 		this->alpha  = 1.5;
 		this->zeta   = 50;
 		this->hdir   = 1.e-8;//0.002;

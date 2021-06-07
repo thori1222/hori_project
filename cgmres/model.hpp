@@ -55,13 +55,13 @@ public:
 	u_t    u;		///< 制御入力
 
 	/*-------------- dPhi/dx -------------- */
-	virtual void phix(double t, const x_t& x, x_t& phx1, int i) = 0;
+	virtual void phix(double t, const x_t& x, x_t& phx1) = 0;
 
 	/*-------------- State Equation -------------- */
-	virtual void xpfunc(double t, const x_t& x, const u_t& u, x_t& xprime, int i) = 0;
+	virtual void xpfunc(double t, const x_t& x, const u_t& u, x_t& xprime) = 0;
 
 	/*-------------- Costate Equation -------------- */
-	virtual void lpfunc(double t, const x_t& lmd, const xu_t& linp, x_t& lprime, int i) = 0; 
+	virtual void lpfunc(double t, const x_t& lmd, const xu_t& linp, x_t& lprime) = 0; 
 
 	/*-------------- Error in Optimality Condition, Hu -------------- */
 	virtual void hufunc(double t, const x_t& x, const x_t& lmd, const u_t& u, u_t& hui) = 0;
@@ -149,7 +149,7 @@ public:
 		model->x = model->x0;
 	
 		// phi_x(x, t)
-		model->phix(tsim0, model->x0, lmd0, 0);
+		model->phix(tsim0, model->x0, lmd0);
 
 		// Hu( 
 		model->hufunc(tsim0, model->x0, lmd0, model->u0, hu0);
@@ -163,6 +163,7 @@ public:
 		}
 		duvec.clear();
 	}
+
 
 	/*-------------- Control Update -------------- */
 
@@ -183,21 +184,21 @@ public:
 		// 前進計算でxの時系列を計算（論文(1)式）
 		x_t xd;
 		for(taut = t, i=0; i < dv; taut += htau, i++){
-			model->xpfunc(taut, xtau.elem(i), u.elem(i), xd, i);
+			model->xpfunc(taut, xtau.elem(i), u.elem(i), xd);
 			xtau.elem(i+1) = xtau.elem(i) + htau * xd;
 			tau[i] = taut; 
 		}
 		tau[i] = taut; 
 
 		// lambdaの終端条件（論文(7)式）
-		model->phix(taut, xtau.elem(dv), ltau.elem(dv), dv);
+		model->phix(taut, xtau.elem(dv), ltau.elem(dv));
 
 		// 後退計算でlambdaの時系列を計算（論文(6)式）
 		x_t ld;
 		for(i = dv-1; i >= 0; i--){
 			linp.x() = xtau.elem(i);
 			linp.u() = u.elem(i);
-			model->lpfunc(taut, ltau.elem(i+1), linp, ld, i);
+			model->lpfunc(taut, ltau.elem(i+1), linp, ld);
 			ltau.elem(i) = ltau.elem(i+1) - htau * ld;
 			taut -= htau; 
 			// 得られたxとlambdaよりHuを計算（論文(5)式）
