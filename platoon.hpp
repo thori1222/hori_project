@@ -47,7 +47,7 @@ public:
 		Ds        = 10.0;
 		Dmin	  = 5.0;
 
-		R         = 40.5;    //////
+		R         = 40;    //////
 		sd_all    = 100;     //////
 		
 		for(int i = 0; i < NCAR; i++){
@@ -130,7 +130,8 @@ public:
 				}
 				lprime[3 * i + 0] += tmp;
 			}
-			lprime[3 * i + 0] += -(sd_all * gain2 * exp(gain2 * (dsum - R)));
+			if(dsum > R)
+				lprime[3 * i + 0] += -(sd_all * gain2 * exp(gain2 * (dsum - R)));
 			lprime[3*i+1] = -(q[3*i+0]*(_x[3*i+0]-(Ds+thw[i]*_x[3*i+1]))*(-thw[i]) 
 							- q[3*i+1]*((i==0 ? v : (refmode==0?v:_x[3*(i-1)+1])) -_x[3*i+1])
 							+ (refmode==0?0:q[3*(i+1)+1]*(i==NCAR-1?0:_x[3*i+1] - _x[3*(i+1)+1])) 
