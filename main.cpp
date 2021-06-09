@@ -52,7 +52,7 @@ int SF[NSF] = {100};
 bool   Lagrange = false;   //ラグランジュ双対を行うかどうか//
 double GAMMA    = 10.0;     //ラグランジュ双対のステップ幅//
 double Rc       = 40.0;    //ラグランジュ双対の隊列長制約//
-double epsilon  = 1.0;     //ラグランジュ双対の更新判定//
+double epsilon  = 0.0;     //ラグランジュ双対の更新判定//
 
 Platoon<NCAR>			platoon[NGROUP];
 PlatoonController<NCAR>	controller[NGROUP];
