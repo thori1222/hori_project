@@ -49,7 +49,7 @@ int Q2[NQ2] = {1};
 int Q3[NQ3] = {0};
 int SF[NSF] = {100};
 
-bool   Lagrange = false;   //ラグランジュ双対を行うかどうか//
+bool   Lagrange = true;   //ラグランジュ双対を行うかどうか//
 double GAMMA    = 10.0;     //ラグランジュ双対のステップ幅//
 double Rc       = 40.0;    //ラグランジュ双対の隊列長制約//
 double epsilon  = 0.0;     //ラグランジュ双対の更新判定//
